@@ -7,14 +7,57 @@ import pandas as pd
 from sklearn.metrics import f1_score, matthews_corrcoef, confusion_matrix, ConfusionMatrixDisplay
 from sklearn.model_selection import StratifiedKFold
 import matplotlib.pyplot as plt
+from lightgbm import LGBMRegressor
+from xgboost import XGBRegressor
+from catboost import CatBoostRegressor
+from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import LogisticRegression
+import numpy as np
 
 class TrainML:
+    DEFAULT_CONFIGS = {
+        'lgbm': {
+            'objective': 'poisson',
+            'n_estimators': 300,
+            'max_depth': 4,
+            'learning_rate': 0.05,
+            'subsample': 0.6,
+            'colsample_bytree': 0.5,
+            'min_data_in_leaf': 100,
+            'random_state': 42,
+            'verbosity': -1
+        },
+        'catboost': {
+            'objective': 'RMSE',
+            'iterations': 250,
+            'depth': 4,
+            'learning_rate': 0.05,
+            'l2_leaf_reg': 0.09,
+            'bagging_temperature': 0.3,
+            'random_strength': 3.5,
+            'min_data_in_leaf': 60,
+            'random_state': 42,
+            'verbose': 0
+        },
+        'gaussian_nb': {
+            'var_smoothing': 1e-9,
+            'priors': np.array([0.58, 0.26, 0.13, 0.03])
+        },
+        'logistic_regression': {
+            'random_state': 42,
+            'max_iter': 1000,
+            'solver': 'lbfgs',
+            'multi_class': 'multinomial',
+            'class_weight': 'balanced'
+        }
+    }
+
     def __init__(self, n_splits=5, random_state=42, thresholds=None):
         self.n_splits = n_splits
         self.random_state = random_state
 
         # Use Scalers class
-        self.scaler = Scalers().get_scaler('minmax')
+        self.scaler = Scalers("minmax")
         
         # Use Imputers class
         self.imputer = Imputers(
@@ -35,21 +78,21 @@ class TrainML:
         self.feature_importances = {}
         self.fold_feature_importances = []
 
-        # Use Models class for model initialization
-        self.lr_model = Models('logistic_regression')
-        self.nb_model = Models('gaussian_nb')
+        # Initialize models directly with their configurations
+        self.lr_model = LogisticRegression(**self.DEFAULT_CONFIGS['logistic_regression'])
+        self.nb_model = GaussianNB(**self.DEFAULT_CONFIGS['gaussian_nb'])
         
         # Initialize ensemble models
-        self.lgbm_model = Models('lgbm')
-        self.xgb_model = Models('xgb')
-        self.catboost_model = Models('catboost')
+        LGBM_Model = LGBMRegressor(**self.DEFAULT_CONFIGS['lgbm'])
+        XGB_Model = XGBRegressor(random_state=random_state)
+        CatBoost_Model = CatBoostRegressor(**self.DEFAULT_CONFIGS['catboost'])
         
         # Create ensemble
         self.ensemble_model = VotingRegressor(
             estimators=[
-                ('lightgbm', self.lgbm_model),
-                ('xgboost', self.xgb_model),
-                ('catboost', self.catboost_model)
+                ('lightgbm', LGBM_Model),
+                #('xgboost', XGB_Model),
+                ('catboost', CatBoost_Model)
             ]
         )
 
@@ -81,7 +124,7 @@ class TrainML:
             return np.clip(result, -1e15, 1e15)
 
         # Physical measurements ratios
-        df['Waist_to_Height'] = safe_divide(df['Physical-Waist_Circumference'], df['Physical-Height'])
+        """df['Waist_to_Height'] = safe_divide(df['Physical-Waist_Circumference'], df['Physical-Height'])
         
         # Blood pressure and heart rate derivatives
         df['Pulse_Pressure'] = df['Physical-Systolic_BP'] - df['Physical-Diastolic_BP']
@@ -151,7 +194,7 @@ class TrainML:
         df['CGAS_Internet_Impact'] = safe_divide(
             df['CGAS-CGAS_Score'], 
             df['PreInt_EduHx-computerinternet_hoursday']
-        )
+        )"""
 
         # Clean up any infinite values
         df = df.replace([np.inf, -np.inf], np.nan)
@@ -354,8 +397,8 @@ class TrainML:
             plt.ylabel('Gerçek')
             plt.tight_layout()
 
-            # plt.savefig('confmat_large.png', dpi=300, transparent=True)  # High resolution and transparent background
-            plt.show()
+            plt.savefig('best_fold_confusion.png', dpi=600)  # High resolution and transparent background
+            #plt.show()
             
 
     def plot_overall_confusion_matrix(self):
@@ -374,4 +417,5 @@ class TrainML:
         plt.ylabel('True')
         plt.tight_layout()
 
-        plt.show()
+        plt.savefig('confusion_matrix.png', dpi=600)  # High resolution and transparent background
+        #plt.show()
