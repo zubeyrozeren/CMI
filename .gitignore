@@ -1,0 +1,5 @@
+data/
+__pycache__/
+catboost_info/
+best_fold_confusion.png
+confusion_matrix.png

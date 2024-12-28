@@ -173,7 +173,7 @@ def impute_physical_measurements(train_df, wh_imputer_type='knn', wc_imputer_typ
     if len(complete_rows) > 0:
         # Initialize imputer for Waist Circumference
         wc_imputer = Imputers(imputer_type=wc_imputer_type, random_state=random_state, 
-                              strategy=strategy, max_iter=max_iter, random_state=random_state)
+                              strategy=strategy, max_iter=max_iter)
         
         # Fit and transform
         X_waist = complete_rows[waist_features]

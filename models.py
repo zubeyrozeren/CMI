@@ -42,10 +42,9 @@ class Models:
             'random_strength': 3.5,
             'min_data_in_leaf': 60,
             'random_state': 42,
-            'verbosity': 0
+            'verbose': 0
         },
         'gaussian_nb': {
-            'random_state': 42,
             'var_smoothing': 1e-9,
             'priors': np.array([0.58, 0.26, 0.13, 0.03])
         },
@@ -60,7 +59,7 @@ class Models:
 
     def __init__(self, model_type='lgbm', **kwargs):
         """
-        Initialize and return the specified model
+        Initialize the specified model
         Args:
             model_type (str): Type of model ('lgbm', 'xgb', 'catboost', 'gaussian_nb', 'logistic_regression')
             **kwargs: Parameters to override default configuration
@@ -70,14 +69,19 @@ class Models:
 
         # Get default config and update with provided parameters
         model_params = self.DEFAULT_CONFIGS[model_type].copy()
-        model_params.update(kwargs)
+        
+        # Only update with kwargs that are relevant to the specific model
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k in model_params}
+        model_params.update(filtered_kwargs)
 
-        models = {
-            'lgbm': LGBMRegressor,
-            'xgb': XGBRegressor,
-            'catboost': CatBoostRegressor,
-            'gaussian_nb': GaussianNB,
-            'logistic_regression': LogisticRegression
-        }
-
-        return models[model_type](**model_params)
+        # Initialize the appropriate model with its specific parameters
+        if model_type == 'lgbm':
+            self.model = LGBMRegressor(**model_params)
+        elif model_type == 'xgb':
+            self.model = XGBRegressor(**model_params)
+        elif model_type == 'catboost':
+            self.model = CatBoostRegressor(**model_params)
+        elif model_type == 'gaussian_nb':
+            self.model = GaussianNB(**model_params)
+        elif model_type == 'logistic_regression':
+            self.model = LogisticRegression(**model_params)
